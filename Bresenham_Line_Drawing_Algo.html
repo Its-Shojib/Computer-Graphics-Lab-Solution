@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bresenham Line Drawing Algorithm</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        window.onload = function() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 800;
+            canvas.height = 600;
+
+            // Hardcoded start and end points
+            const x1 = 50;  // Start X
+            const y1 = 50;  // Start Y
+            const x2 = 300; // End X
+            const y2 = 300; // End Y
+
+            bresenhamLine(ctx, x1, y1, x2, y2);
+
+            function bresenhamLine(ctx, x1, y1, x2, y2) {
+                let dx = Math.abs(x2 - x1);
+                let dy = -Math.abs(y2 - y1);
+                let sx = (x1 < x2) ? 1 : -1;
+                let sy = (y1 < y2) ? 1 : -1;
+                let err = dx + dy; // error value e_xy
+                let e2; // error value doubled
+
+                ctx.beginPath();
+                while (true) {
+                    ctx.rect(x1, y1, 1, 1); // Set pixel
+                    console.log(`Point(${x1}, ${y1})`); // Log points to the console
+                    if (x1 === x2 && y1 === y2) break;
+                    e2 = 2 * err;
+                    if (e2 >= dy) { 
+                        err += dy;
+                        x1 += sx;
+                    }
+                    if (e2 <= dx) {
+                        err += dx;
+                        y1 += sy;
+                    }
+                }
+                ctx.fill();
+            }
+        };
+    </script>
+</body>
+</html>

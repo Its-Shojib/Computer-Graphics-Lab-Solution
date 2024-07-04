@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DDA Line Drawing Algorithm</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        window.onload = function() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 800;
+            canvas.height = 600;
+
+            // Hardcoded start and end points
+            const x1 = 50;  // Start X
+            const y1 = 50;  // Start Y
+            const x2 = 300; // End X
+            const y2 = 300; // End Y
+
+            ddaLine(ctx, x1, y1, x2, y2);
+
+            function ddaLine(ctx, x1, y1, x2, y2) {
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const steps = Math.abs(dx) > Math.abs(dy) ? Math.abs(dx) : Math.abs(dy);
+                const xIncrement = dx / steps;
+                const yIncrement = dy / steps;
+
+                let x = x1;
+                let y = y1;
+
+                ctx.beginPath();
+                for (let i = 0; i <= steps; i++) {
+                    ctx.rect(Math.round(x), Math.round(y), 1, 1);
+                    console.log(`Point(${Math.round(x)}, ${Math.round(y)})`); // Log points to the console
+                    x += xIncrement;
+                    y += yIncrement;
+                }
+                ctx.fill();
+            }
+        };
+    </script>
+</body>
+</html>

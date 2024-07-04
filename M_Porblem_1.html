@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL Line Drawing</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            display: block;
+            margin: 10px 0;
+        }
+
+        form {
+            margin: 10px 0;
+        }
+
+        .flex {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+    </style>
+</head>
+
+<body class="flex">
+    <canvas id="glcanvas" width="500" height="500"></canvas>
+    <form id="lineForm">
+        <div>
+            <label for="x1">x1:</label>
+            <input type="number" id="x1" name="x1" required>
+            <label for="y1">y1:</label>
+            <input type="number" id="y1" name="y1" required>
+        </div>
+        <div>
+            <label for="x2">x2:</label>
+            <input type="number" id="x2" name="x2" required>
+            <label for="y2">y2:</label>
+            <input type="number" id="y2" name="y2" required>
+        </div>
+        <div style="padding-top: 10px;">
+            <button style="background-color: green; color: white;" type="button" onclick="drawUsingDDA()">Implement
+                DDA</button>
+            <button style="background-color: blue; color: white;" type="button" onclick="drawUsingBresenham()">Implement Bresenham</button>
+        </div>
+    </form>
+    <script>
+        const vertexShaderSource = `
+            attribute vec2 aPosition;
+            void main() {
+                gl_Position = vec4(aPosition, 0.0, 1.0);
+            }
+        `;
+
+        const fragmentShaderSource = `
+            void main() {
+                gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+            }
+        `;
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Shader compile failed with: ' + gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        function createProgram(gl, vertexShader, fragmentShader) {
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('Program failed to link: ' + gl.getProgramInfoLog(program));
+                gl.deleteProgram(program);
+                return null;
+            }
+            return program;
+        }
+
+        function initWebGL() {
+            const canvas = document.getElementById('glcanvas');
+            const gl = canvas.getContext('webgl');
+            if (!gl) {
+                alert('WebGL not supported, falling back on experimental-webgl');
+                gl = canvas.getContext('experimental-webgl');
+            }
+            if (!gl) {
+                alert('Your browser does not support WebGL');
+            }
+
+            const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+            const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+            const program = createProgram(gl, vertexShader, fragmentShader);
+
+            gl.useProgram(program);
+            const aPosition = gl.getAttribLocation(program, 'aPosition');
+            const positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.enableVertexAttribArray(aPosition);
+            gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
+
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+
+            return { gl, program, positionBuffer };
+        }
+
+        function ddaLine(x1, y1, x2, y2) {
+            let points = [];
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const steps = Math.max(Math.abs(dx), Math.abs(dy));
+            const xInc = dx / steps;
+            const yInc = dy / steps;
+
+            let x = x1;
+            let y = y1;
+
+            for (let i = 0; i <= steps; i++) {
+                points.push(x, y);
+                x += xInc;
+                y += yInc;
+            }
+            return points;
+        }
+
+
+        function bresenhamLine(x1, y1, x2, y2) {
+            let points = [];
+            const dx = Math.abs(x2 - x1);
+            const dy = Math.abs(y2 - y1);
+            const sx = (x1 < x2) ? 1 : -1;
+            const sy = (y1 < y2) ? 1 : -1;
+            let err = dx - dy;
+
+            while (true) {
+                points.push(x1, y1);
+                if (x1 === x2 && y1 === y2) break;
+                const e2 = 2 * err;
+                if (e2 > -dy) {
+                    err -= dy;
+                    x1 += sx;
+                }
+                if (e2 < dx) {
+                    err += dx;
+                    y1 += sy;
+                }
+            }
+            return points;
+        }
+
+        function drawLine(gl, points) {
+            const normalizedPoints = points.map((v, i) => {
+                if (i % 2 === 0) {
+                    return (v / (gl.canvas.width / 2)) - 1;
+                } else {
+                    return 1 - (v / (gl.canvas.height / 2));
+                }
+            });
+
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalizedPoints), gl.STATIC_DRAW);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawArrays(gl.LINE_STRIP, 0, normalizedPoints.length / 2);
+        }
+
+        const { gl, program, positionBuffer } = initWebGL();
+
+        function drawUsingDDA() {
+            const x1 = parseInt(document.getElementById('x1').value);
+            const y1 = parseInt(document.getElementById('y1').value);
+            const x2 = parseInt(document.getElementById('x2').value);
+            const y2 = parseInt(document.getElementById('y2').value);
+            const ddaPoints = ddaLine(x1, y1, x2, y2);
+            drawLine(gl, ddaPoints);
+        }
+
+        function drawUsingBresenham() {
+            const x1 = parseInt(document.getElementById('x1').value);
+            const y1 = parseInt(document.getElementById('y1').value);
+            const x2 = parseInt(document.getElementById('x2').value);
+            const y2 = parseInt(document.getElementById('y2').value);
+            const bresenhamPoints = bresenhamLine(x1, y1, x2, y2);
+            drawLine(gl, bresenhamPoints);
+        }
+    </script>
+</body>
+
+</html>

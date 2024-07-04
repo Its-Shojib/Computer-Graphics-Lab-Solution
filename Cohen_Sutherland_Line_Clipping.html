@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cohen-Sutherland Line Clipping</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        window.onload = function() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 800;
+            canvas.height = 600;
+
+            // Clipping rectangle boundaries
+            const clipRect = { xmin: 100, ymin: 100, xmax: 600, ymax: 400 };
+
+            // Draw clipping rectangle
+            ctx.beginPath();
+            ctx.rect(clipRect.xmin, clipRect.ymin, clipRect.xmax - clipRect.xmin, clipRect.ymax - clipRect.ymin);
+            ctx.strokeStyle = 'red';
+            ctx.stroke();
+
+            // Hardcoded start and end points
+            const x1 = 50;
+            const y1 = 50;
+            const x2 = 700;
+            const y2 = 500;
+
+            // Draw the original line (for comparison)
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.strokeStyle = 'blue';
+            ctx.stroke();
+
+            const code = (x, y) => (
+                (x < clipRect.xmin ? 1 : 0)   // left
+                | (x > clipRect.xmax ? 2 : 0) // right
+                | (y < clipRect.ymin ? 4 : 0) // bottom
+                | (y > clipRect.ymax ? 8 : 0) // top
+            );
+
+            function cohenSutherlandLineClip(x1, y1, x2, y2) {
+                let code1 = code(x1, y1);
+                let code2 = code(x2, y2);
+                let accept = false;
+
+                while (true) {
+                    if (!(code1 | code2)) { // Bitwise OR is 0. Trivially accept and exit loop
+                        accept = true;
+                        break;
+                    } else if (code1 & code2) { // Logical AND is not 0. Trivially reject and exit loop
+                        break;
+                    } else {
+                        let x, y;
+                        const outcodeOut = code1 ? code1 : code2;
+
+                        // Find intersection point;
+                        // using formulas y = y1 + slope * (x - x1), x = x1 + (1 / slope) * (y - y1)
+                        if (outcodeOut & 8) { // point is above the clip rectangle
+                            x = x1 + (x2 - x1) * (clipRect.ymax - y1) / (y2 - y1);
+                            y = clipRect.ymax;
+                        } else if (outcodeOut & 4) { // point is below the clip rectangle
+                            x = x1 + (x2 - x1) * (clipRect.ymin - y1) / (y2 - y1);
+                            y = clipRect.ymin;
+                        } else if (outcodeOut & 2) { // point is to the right of clip rectangle
+                            y = y1 + (y2 - y1) * (clipRect.xmax - x1) / (x2 - x1);
+                            x = clipRect.xmax;
+                        } else if (outcodeOut & 1) { // point is to the left of clip rectangle
+                            y = y1 + (y2 - y1) * (clipRect.xmin - x1) / (x2 - x1);
+                            x = clipRect.xmin;
+                        }
+
+                        // Now move outside point to intersection point to clip
+                        if (outcodeOut == code1) {
+                            x1 = x;
+                            y1 = y;
+                            code1 = code(x1, y1);
+                        } else {
+                            x2 = x;
+                            y2 = y;
+                            code2 = code(x2, y2);
+                        }
+                    }
+                }
+                if (accept) {
+                    // If the segment is accepted, draw it
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.strokeStyle = 'green';
+                    ctx.stroke();
+                    console.log(`Clipped Line: Start(${x1}, ${y1}) End(${x2}, ${y2})`);
+                }
+            }
+
+            cohenSutherlandLineClip(x1, y1, x2, y2);
+        };
+    </script>
+</body>
+</html>
